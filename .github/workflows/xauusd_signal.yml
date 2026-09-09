@@ -1,0 +1,38 @@
+name: XAUUSD Signal
+
+on:
+  schedule:
+    # Her saat basi calisir (UTC). Altin piyasasi 7/24'e yakin acik oldugu
+    # icin hafta sonu bosluklarini ayirt etmeye gerek yok; yfinance zaten
+    # veri yoksa hata dondurur ve is basarisiz olarak isaretlenir.
+    - cron: "5 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  signal:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run signal script
+        run: python xauusd_signal.py
+
+      - name: Commit updated log
+        run: |
+          git config user.name "xauusd-signal-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add signals_log.csv
+          git diff --cached --quiet || git commit -m "chore: update signals log"
+          git push
