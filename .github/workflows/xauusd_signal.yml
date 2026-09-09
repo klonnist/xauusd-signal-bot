@@ -34,5 +34,13 @@ jobs:
           git config user.name "xauusd-signal-bot"
           git config user.email "actions@users.noreply.github.com"
           git add signals_log.csv
-          git diff --cached --quiet || git commit -m "chore: update signals log"
-          git push
+          git diff --cached --quiet && exit 0
+          git commit -m "chore: update signals log"
+          for i in 1 2 3 4 5; do
+            git push && exit 0
+            git fetch origin "$GITHUB_REF_NAME"
+            git rebase "origin/$GITHUB_REF_NAME"
+            sleep $((RANDOM % 5 + 1))
+          done
+          echo "::error::push failed after retries"
+          exit 1
