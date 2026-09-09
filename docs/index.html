@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XAUUSD Sinyal Botu — Panel</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0b0f14;
+    --panel: #121821;
+    --panel-border: #212a37;
+    --text: #e6edf3;
+    --muted: #8b98a5;
+    --green: #3fb950;
+    --red: #f85149;
+    --accent: #d4a017;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    padding: 24px;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .sub a { color: var(--accent); }
+  #status { color: var(--muted); font-size: 12px; margin-bottom: 24px; }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .card .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+  .card .value { font-size: 21px; font-weight: 600; margin-top: 6px; }
+  .card.action-buy { border-color: var(--green); }
+  .card.action-sell { border-color: var(--red); }
+  .action-buy .value { color: var(--green); }
+  .action-sell .value { color: var(--red); }
+  .action-hold .value { color: var(--muted); }
+
+  section {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+  }
+  section h2 { font-size: 14px; margin: 0 0 12px; color: var(--text); }
+  .reason { color: var(--muted); font-size: 13px; line-height: 1.5; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--panel-border); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 500; }
+  tr:last-child td { border-bottom: none; }
+  .empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
+  .side-buy { color: var(--green); font-weight: 600; }
+  .side-sell { color: var(--red); font-weight: 600; }
+  .side-hold { color: var(--muted); }
+  .table-wrap { overflow-x: auto; }
+
+  .disclaimer {
+    color: var(--muted); font-size: 12px; line-height: 1.6;
+    border-top: 1px solid var(--panel-border); padding-top: 14px; margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+
+<h1>XAUUSD Sinyal Botu — Panel</h1>
+<div class="sub">
+  Veriler GitHub Actions tarafından her saat başı güncellenir · repo:
+  <a href="https://github.com/klonnist/xauusd-signal-bot" target="_blank">klonnist/xauusd-signal-bot</a>
+  · veri kaynağı: yfinance (GC=F altın futures, XAUUSD proxy)
+</div>
+<div id="status">Yükleniyor…</div>
+
+<div class="cards" id="cards"></div>
+
+<section>
+  <h2>Sinyal Gerekçesi</h2>
+  <div class="reason" id="reason">-</div>
+</section>
+
+<section>
+  <h2>Geçmiş Sinyaller (son 50)</h2>
+  <div class="table-wrap">
+    <table id="history-table">
+      <thead>
+        <tr>
+          <th>Zaman (UTC)</th>
+          <th>Mum</th>
+          <th>Aksiyon</th>
+          <th>Fiyat</th>
+          <th>RSI</th>
+          <th>ATR</th>
+          <th>SL</th>
+          <th>TP</th>
+        </tr>
+      </thead>
+      <tbody id="history-body">
+        <tr><td colspan="8" class="empty">Yükleniyor…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="disclaimer">
+  Bu panel <strong>yatırım tavsiyesi değildir</strong>. RSI + hacim + ATR tabanlı basit,
+  kural temelli bir sinyal üreticisinin çıktısını gösterir; eğitim/araştırma amaçlıdır.
+  Gerçek parayla işlem yapmadan önce kendi analizinizi ve risk yönetiminizi uygulayın.
+</div>
+
+<script>
+const OWNER = "klonnist";
+const REPO = "xauusd-signal-bot";
+const BRANCH = "master";
+const RAW = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}`;
+const REFRESH_MS = 5 * 60 * 1000;
+
+function fmt(n, digits = 2) {
+  if (n === undefined || n === null || n === "" || isNaN(n)) return "-";
+  return Number(n).toLocaleString("tr-TR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+}
+function fmtTime(t) {
+  return (t || "").replace("T", " ").replace("+00:00", " UTC");
+}
+function actionClass(action) {
+  if (action === "BUY") return "buy";
+  if (action === "SELL") return "sell";
+  return "hold";
+}
+
+async function fetchText(path) {
+  const res = await fetch(`${RAW}/${path}?t=${Date.now()}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`HTTP ${res.status} (${path})`);
+  return res.text();
+}
+
+function parseCsv(text) {
+  const lines = text.trim().split("\n");
+  const headers = lines[0].split(",");
+  return lines.slice(1).map(line => {
+    const values = line.split(",");
+    const row = {};
+    headers.forEach((h, i) => { row[h] = values[i]; });
+    return row;
+  });
+}
+
+function renderCards(signal) {
+  const cls = actionClass(signal.action);
+  const cards = [
+    { label: "Aksiyon", value: signal.action, cls: `action-${cls}` },
+    { label: "Fiyat", value: fmt(signal.price) },
+    { label: "RSI (14)", value: fmt(signal.rsi, 1) },
+    { label: "ATR (14)", value: fmt(signal.atr, 2) },
+    { label: "Stop Loss", value: signal.sl !== null ? fmt(signal.sl) : "-" },
+    { label: "Take Profit", value: signal.tp !== null ? fmt(signal.tp) : "-" },
+  ];
+  document.getElementById("cards").innerHTML = cards.map(c => `
+    <div class="card ${c.cls || ""}">
+      <div class="label">${c.label}</div>
+      <div class="value">${c.value}</div>
+    </div>
+  `).join("");
+  document.getElementById("reason").textContent = signal.reason || "-";
+  document.getElementById("status").textContent =
+    `Son mum: ${fmtTime(signal.candle_time)} · son güncelleme: ${fmtTime(signal.timestamp_utc)}`;
+}
+
+function renderHistory(rows) {
+  const tbody = document.getElementById("history-body");
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="8" class="empty">Henüz kayıt yok.</td></tr>`;
+    return;
+  }
+  const recent = rows.slice(-50).reverse();
+  tbody.innerHTML = recent.map(r => `
+    <tr>
+      <td>${fmtTime(r.timestamp_utc)}</td>
+      <td>${fmtTime(r.candle_time)}</td>
+      <td class="side-${actionClass(r.action)}">${r.action}</td>
+      <td>${fmt(r.price)}</td>
+      <td>${fmt(r.rsi, 1)}</td>
+      <td>${fmt(r.atr, 2)}</td>
+      <td>${r.sl ? fmt(r.sl) : "-"}</td>
+      <td>${r.tp ? fmt(r.tp) : "-"}</td>
+    </tr>
+  `).join("");
+}
+
+async function load() {
+  try {
+    const [latestText, historyText] = await Promise.all([
+      fetchText("docs/data/latest.json"),
+      fetchText("signals_log.csv"),
+    ]);
+    renderCards(JSON.parse(latestText));
+    renderHistory(parseCsv(historyText));
+  } catch (err) {
+    document.getElementById("status").textContent = `Veri yüklenemedi: ${err.message}`;
+  }
+}
+
+load();
+setInterval(load, REFRESH_MS);
+</script>
+
+</body>
+</html>

@@ -38,6 +38,7 @@ VOLUME_CONFIRM_MULT = 1.2   # hacim, ortalamanin en az bu katinda olmali
 ATR_SL_MULT = 1.5
 ATR_TP_MULT = 3.0            # R:R yaklasik 1:2
 LOG_FILE = "signals_log.csv"
+LATEST_JSON_FILE = "docs/data/latest.json"
 
 
 def fetch_data() -> pd.DataFrame:
@@ -163,6 +164,15 @@ def append_log(signal: dict) -> None:
     combined.to_csv(LOG_FILE, index=False)
 
 
+def write_latest_json(signal: dict) -> None:
+    import json
+    import os
+
+    os.makedirs(os.path.dirname(LATEST_JSON_FILE), exist_ok=True)
+    with open(LATEST_JSON_FILE, "w", encoding="utf-8") as fh:
+        json.dump(signal, fh, ensure_ascii=False, indent=2)
+
+
 def main() -> int:
     try:
         raw = fetch_data()
@@ -182,6 +192,7 @@ def main() -> int:
         print(f"{key}: {value}")
 
     append_log(signal)
+    write_latest_json(signal)
 
     summary_path = __import__("os").environ.get("GITHUB_STEP_SUMMARY")
     if summary_path:
