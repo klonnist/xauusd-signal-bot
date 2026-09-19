@@ -1,10 +1,10 @@
 {
-  "timestamp_utc": "2026-09-19T02:12:18+00:00",
+  "timestamp_utc": "2026-09-19T03:12:32+00:00",
   "candle_time": "2026-09-18 16:00:00-04:00",
   "price": 4415.9,
   "rsi": 54.82,
   "volume": 2172.0,
-  "volume_ma": 6432.6,
+  "volume_ma": 6435.4,
   "atr": 17.361,
   "action": "HOLD",
   "sl": null,
