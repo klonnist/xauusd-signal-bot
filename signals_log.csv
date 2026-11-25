@@ -671,3 +671,4 @@ timestamp_utc,candle_time,price,rsi,volume,volume_ma,atr,action,sl,tp,reason
 2026-11-24T20:00:24+00:00,2026-11-24 14:00:00-05:00,3557.6,31.96,3065.0,10308.95,21.035,HOLD,,,kosullar saglanmadi (RSI kesisimi / trend / hacim teyidi bir arada yok)
 2026-11-25T03:25:03+00:00,2026-11-24 22:00:00-05:00,3556.2,36.07,364.0,8822.4,19.735,HOLD,,,kosullar saglanmadi (RSI kesisimi / trend / hacim teyidi bir arada yok)
 2026-11-25T13:58:34+00:00,2026-11-25 08:00:00-05:00,3513.9,38.25,20044.0,6230.05,26.169,HOLD,,,kosullar saglanmadi (RSI kesisimi / trend / hacim teyidi bir arada yok)
+2026-11-25T22:58:18+00:00,2026-11-25 16:00:00-05:00,3617.8,62.79,4144.0,11983.75,31.054,HOLD,,,kosullar saglanmadi (RSI kesisimi / trend / hacim teyidi bir arada yok)
